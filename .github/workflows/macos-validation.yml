@@ -1,0 +1,102 @@
+name: Native macOS build and verification
+on:
+  push:
+    branches: ['macos-validation-*']
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  native-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            model: qwen3.5:2b
+          - runner: macos-15-intel
+            arch: x64
+            model: qwen3.5:4b
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 65
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      OLLAMA_NO_CLOUD: '1'
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_CONTEXT_LENGTH: '8192'
+      LECTURE_BUILD_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Record actual platform
+        run: |
+          mkdir -p test-results
+          sw_vers > test-results/platform.txt
+          uname -m >> test-results/platform.txt
+          sysctl -n hw.memsize >> test-results/platform.txt
+          python -c 'import platform; print(platform.platform(), platform.machine())' >> test-results/platform.txt
+      - name: Install native dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r desktop/requirements-macos.txt
+          npm ci
+          node node_modules/electron/install.js
+          .venv/bin/python -m pip freeze > test-results/native-dependencies.txt
+      - name: Runtime and platform tests
+        run: |
+          .venv/bin/python -m pytest tests/test_local_runtime.py tests/test_macos_runtime.py -q | tee test-results/runtime-tests.txt
+          npm test | tee test-results/frontend-tests.txt
+      - name: Build native application and DMG
+        run: bash scripts/build-macos.sh --skip-install
+      - name: Verify native bundle
+        run: |
+          APP="$(find release -maxdepth 2 -name '*.app' -type d | head -1)"
+          test -n "$APP"
+          file "$APP/Contents/MacOS/课伴macOS" "$APP/Contents/Resources/runtime/lecture-runtime" | tee test-results/binary-architecture.txt
+          codesign --verify --deep --strict --verbose=2 "$APP" > test-results/codesign.txt 2>&1
+          /usr/libexec/PlistBuddy -c 'Print NSMicrophoneUsageDescription' "$APP/Contents/Info.plist" >> test-results/codesign.txt
+      - name: Prepare local Ollama and models
+        run: |
+          node scripts/prepare-native-ollama.cjs
+          test-results/native-model-environment/ollama/ollama pull '${{ matrix.model }}'
+          .venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('small',device='cpu',compute_type='int8'); print('Native Whisper loaded')"
+          say -v Samantha -o test-results/synthetic-economics.aiff 'Opportunity cost is the value of the next best alternative forgone. Scarce resources require choices.'
+          .venv/bin/python scripts/prepare-ci-audio.py
+      - name: Verify packaged Electron and real native models
+        run: |
+          APP="$(find release -maxdepth 2 -name '*.app' -type d | head -1)"
+          export LECTURE_APP_EXE="$PWD/$APP/Contents/MacOS/课伴macOS"
+          export LECTURE_ASR_VERIFY=1
+          export LECTURE_CAPTURE_VERIFY=1
+          export LECTURE_TEST_MODEL='${{ matrix.model }}'
+          node scripts/desktop-smoke.cjs 2>&1 | tee test-results/packaged-smoke.txt
+          grep '^PASS:' test-results/packaged-smoke.txt
+      - name: Release checksums
+        run: |
+          (cd release && shasum -a 256 *.dmg *.zip > SHA256SUMS-${{ matrix.arch }}.txt)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macOS-${{ matrix.arch }}-evidence
+          path: |
+            test-results/*.txt
+            test-results/*.png
+            test-results/ollama.log
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: macOS-${{ matrix.arch }}-installers
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/SHA256SUMS-*.txt

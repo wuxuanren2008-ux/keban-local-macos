@@ -1,0 +1,87 @@
+{
+  "name": "lecture-companion-macos",
+  "version": "0.2.0",
+  "description": "课伴 macOS 本地端：Apple Silicon 与 Intel，Whisper + 本机 LLM",
+  "main": "desktop/main.cjs",
+  "author": "Lecture Companion contributors",
+  "license": "MIT",
+  "dependencies": {
+    "extract-zip": "2.0.1"
+  },
+  "scripts": {
+    "start": "electron .",
+    "prepack": "node scripts/fix-nsis.cjs",
+    "pack": "electron-builder --dir",
+    "predist": "node scripts/fix-nsis.cjs",
+    "dist": "electron-builder --win nsis portable",
+    "test": "node --test tests/*.test.cjs",
+    "dist:mac": "electron-builder --mac dmg zip",
+    "pack:mac": "electron-builder --mac --dir"
+  },
+  "devDependencies": {
+    "electron": "41.10.7",
+    "electron-builder": "26.8.2",
+    "playwright-core": "1.58.2"
+  },
+  "build": {
+    "appId": "win.lecturenotes.desktop.macos",
+    "productName": "课伴macOS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/model-setup.cjs",
+      "package.json",
+      "desktop/platform.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "build/runtime/lecture-runtime",
+        "to": "runtime"
+      },
+      {
+        "from": "desktop/web",
+        "to": "web"
+      }
+    ],
+    "win": {
+      "icon": "desktop/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "artifactName": "LectureCompanion-${version}-win-${arch}-setup.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "课伴",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "LectureCompanion-${version}-win-${arch}-portable.${ext}"
+    },
+    "publish": null,
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "desktop/icon.icns",
+      "category": "public.app-category.education",
+      "minimumSystemVersion": "14.0.0",
+      "identity": "-",
+      "hardenedRuntime": true,
+      "entitlements": "desktop/entitlements.mac.plist",
+      "entitlementsInherit": "desktop/entitlements.mac.plist",
+      "artifactName": "LectureCompanion-macOS-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "课伴使用麦克风录制课堂，并在本机生成字幕和译文。",
+        "NSAppleEventsUsageDescription": "课伴只处理本机课堂资料。"
+      }
+    }
+  }
+}

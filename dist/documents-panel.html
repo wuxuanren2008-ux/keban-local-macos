@@ -1,0 +1,26 @@
+<section id="documentsView" class="hidden" data-screen-label="文件学习">
+  <div class="page-heading"><div><div class="eyebrow">DOCUMENT STUDY</div><h1>读懂资料，抓住要点。</h1><p>课件、教材与论文，一份资料，一次完整的学习整理。</p></div><button class="btn" id="documentNew">＋ 新资料</button></div>
+  <div class="document-layout">
+    <aside class="document-controls">
+      <div class="card document-upload">
+        <label class="document-drop" id="documentDrop" for="documentFile"><span class="document-file-icon" aria-hidden="true">▤</span><strong>选择或拖入学习资料</strong><span>PDF · Word · PowerPoint · TXT · Markdown</span><span>单个文件最多 10 MB，PDF 最多 60 页</span><input type="file" id="documentFile" accept=".pdf,.txt,.md,.docx,.pptx"></label>
+        <div id="documentInfo" class="document-info">原文件先在本机准备，点击开始后才发送给 Gemini。</div>
+        <div class="field"><label for="documentLanguage">翻译与总结语言</label><select id="documentLanguage"><option value="zh">简体中文</option><option value="en">English</option><option value="ms">Bahasa Melayu</option></select></div>
+        <fieldset class="document-mode"><legend>这份资料怎么读？</legend><label><input type="radio" name="documentMode" value="course" checked><span><strong>课程资料</strong><small>知识结构、概念解释、复习自测</small></span></label><label><input type="radio" name="documentMode" value="paper"><span><strong>学术文献</strong><small>研究问题、方法、结论与证据</small></span></label></fieldset>
+        <label class="consent-line"><input type="checkbox" id="documentConsent">我同意将这份资料发送给 Gemini 翻译并分析。</label>
+        <button class="btn primary" id="documentStart" disabled>翻译并整理要点</button><button class="btn hidden" id="documentCancel">停止处理</button>
+        <p class="sub" id="documentAuthHint">需要登录课伴；使用网站已配置的 Gemini 服务。</p>
+        <p class="sub">每账户每天最多 100 次分段请求；一页 PDF 通常占一次，整份总结另占一次。停止后当前请求可能已计入额度。</p>
+      </div>
+      <div class="document-history"><h2>本机资料记录</h2><p class="sub">仅保存在当前浏览器，按课伴账户隔离。</p><div id="documentHistory"></div></div>
+      <details class="document-sources"><summary>分析方法与技能来源</summary><p>课程学习使用 <a href="https://github.com/lowwwbank/anything-to-course" target="_blank" rel="noopener">Anything to Course</a> 的学习目标与主动回忆流程；文献分析使用 <a href="https://github.com/K-Dense-AI/scientific-agent-skills" target="_blank" rel="noopener">Scientific Critical Thinking</a> 的证据评价流程。均为固定版本、MIT 许可，服务端按资料类型加载。</p><p>只根据当前资料分析，结果请对照原文核查。</p></details>
+    </aside>
+    <div class="document-workspace card">
+      <div class="document-workhead"><div><h2 id="documentTitle">你的学习资料</h2><p class="sub" id="documentStatus" role="status" aria-live="polite">选择文件后，在这里查看译文和学习要点。</p></div><select id="documentExportFormat" aria-label="资料导出格式"><option value="md">Markdown</option><option value="txt">TXT</option><option value="json">JSON 备份</option></select><button class="btn" id="documentExport" disabled>导出</button></div>
+      <progress id="documentProgress" value="0" max="1" class="hidden" aria-label="资料处理进度"></progress>
+      <div class="document-tabs" role="tablist" aria-label="文件学习结果"><button role="tab" data-document-tab="translation" aria-selected="true">双语翻译</button><button role="tab" data-document-tab="summary" aria-selected="false">内容要点</button><button role="tab" data-document-tab="review" aria-selected="false">复习自测</button></div>
+      <div id="documentTranslation" class="document-pane" role="tabpanel"><div class="document-empty"><span aria-hidden="true">▤</span><h3>从一份资料开始</h3><p>逐页读懂原文，保留术语和来源位置。<br>翻译完成后，把知识整理成可复习的要点。</p><div><span>01 选资料</span><span>02 双语读</span><span>03 抓重点</span></div></div></div>
+      <div id="documentSummary" class="document-pane hidden" role="tabpanel"></div><div id="documentReview" class="document-pane hidden" role="tabpanel"></div>
+    </div>
+  </div>
+</section>

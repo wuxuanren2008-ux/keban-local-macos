@@ -1,0 +1,15 @@
+.course-toolbar{display:flex;align-items:center;gap:12px;margin:0 0 18px;flex-wrap:wrap}
+.course-toolbar label{font-size:13px;font-weight:650;color:var(--green)}
+.course-toolbar select{min-width:190px;max-width:360px;background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink)}
+.course-toolbar .sub{margin-left:auto}.gemini-consent{display:none}
+.study-tabs{overflow:auto}.study-tabs button{flex-shrink:0}.map-tree,.map-tree ul{list-style:none;padding-left:16px;margin:0}
+.map-tree{padding:0}.map-tree ul{border-left:1px solid var(--line);margin-left:9px}
+.map-node{display:block;border:1px solid var(--line);background:#f4f8f5;border-radius:9px;padding:10px 12px;margin:8px 0;font-size:13px;color:var(--ink);text-align:left;width:100%;white-space:normal}
+.map-node:hover{border-color:var(--green)}.map-node small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+#mindmapPane{max-height:620px;overflow:auto}#mindmapPane h3{font-size:16px}.local-status{white-space:pre-wrap;font-size:12px;line-height:1.8;color:var(--muted)}
+.local-settings-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.local-settings-actions .btn{flex:1}
+#localSettings .field select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:white}
+#localSettings progress{width:100%}.model-hint{font-size:12px;color:var(--muted)}
+#summaryFeedback{display:block;width:100%;min-height:100px;border:1px solid var(--line);border-radius:9px;margin:8px 0;padding:10px;font:inherit;resize:vertical}
+#summaryPane>details{margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
+@media(max-width:760px){.course-toolbar select{min-width:130px;flex:1}.course-toolbar .sub{width:100%;margin-left:0}}
