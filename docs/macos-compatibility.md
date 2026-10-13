@@ -1,5 +1,7 @@
 # macOS 适配与验证边界
 
+0.3.0 系统声音与双语浮窗更新：原生 arm64/x64 已通过 run 38336432144；各 108 项后端、36 项前端/权限/窗口测试，以及真实本机模型与右声道合成输入的完整字幕、录音保存和错误处理检查。详见[新增功能实测范围](subtitles-validation.md)。系统声音要求 macOS 14.2+；物理 MacBook 声音设备与首次授权仍需实机确认。
+
 目标为 macOS Sonoma 14 或更新版本。Apple Silicon 使用原生 arm64 包，Intel 使用 x64 包；不能混用 Windows Python 冻结程序或依靠 Rosetta 验证替代原生 ARM 构建。
 
 ## 已确定的部署方式
