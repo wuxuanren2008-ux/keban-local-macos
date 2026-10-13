@@ -19,8 +19,8 @@ const {spawn}=require('node:child_process');
         // Put all speech in the RIGHT channel. This proves the production
         // graph actually downmixes stereo system audio instead of losing it.
         const stereo=context.createBuffer(2,buffer.length,buffer.sampleRate);stereo.copyToChannel(buffer.getChannelData(0),1);
-        const source=context.createBufferSource(),destination=context.createMediaStreamDestination();source.buffer=stereo;source.loop=true;source.connect(destination);await context.resume();source.start();
-        window.__subtitleFixture=context;window.__subtitleFixtureStream=destination.stream;
+        const source=context.createBufferSource(),destination=context.createMediaStreamDestination();source.buffer=stereo;source.loop=true;source.connect(destination);await context.resume();
+        window.__subtitleFixture=context;window.__subtitleFixtureStream=destination.stream;window.__subtitleFixtureSource=source;
         navigator.mediaDevices.getDisplayMedia=async()=>destination.stream;
       },wav);
     }else{
@@ -35,6 +35,7 @@ const {spawn}=require('node:child_process');
     await page.locator('#title').fill(fixture?'Synthetic system-stream QA':'Native Windows loopback QA');
     await page.locator('#captureSource').selectOption('system');await page.locator('#start').click();
     await page.waitForFunction(()=>active&&recorder?.state==='recording',null,{timeout:45000});
+    if(fixture){await page.waitForFunction(()=>recognition?.ready,null,{timeout:60000});await page.evaluate(()=>window.__subtitleFixtureSource.start())}
     const overlay=await app.waitForEvent('window',{predicate:p=>p!==page,timeout:15000}).catch(()=>app.windows().find(p=>p!==page));
     assert.ok(overlay,'Subtitle window was created');await overlay.waitForLoadState();
     await page.waitForFunction(()=>items.some(x=>/opportunity cost/i.test(x.text)&&x.translation&&!x._translating),null,{timeout:300000});

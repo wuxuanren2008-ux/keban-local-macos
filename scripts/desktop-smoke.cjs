@@ -33,13 +33,16 @@ const fs=require('node:fs');
         const context=new AudioContext({sampleRate:48000});if(typeof context.setSinkId==='function')await context.setSinkId({type:'none'});
         const bytes=Uint8Array.from(atob(encoded),char=>char.charCodeAt(0));const buffer=await context.decodeAudioData(bytes.buffer);
         const destination=context.createMediaStreamDestination(),source=context.createBufferSource();source.buffer=buffer;source.loop=true;source.connect(destination);
-        await context.resume();source.start();window.__syntheticCaptureContext=context;
+        await context.resume();window.__syntheticCaptureContext=context;window.__syntheticCaptureSource=source;
         // Test-only substitute for the VM's silent microphone; never used by the shipped app.
         navigator.mediaDevices.getUserMedia=async()=>destination.stream;
       },input);
       await page.locator('#title').fill('Synthetic recorded classroom');await page.locator('#start').click();
       await page.waitForFunction(()=>active&&recorder?.state==='recording',null,{timeout:30000});
-      await page.waitForFunction(()=>recognition?.node,null,{timeout:30000});
+      await page.waitForFunction(()=>recognition?.node&&recognition.ready,null,{timeout:60000});
+      // Start the controlled test phrase only after the real capture graph and
+      // Whisper are ready; an arbitrary mid-word loop offset is not an ASR test.
+      await page.evaluate(()=>window.__syntheticCaptureSource.start());
       await page.evaluate(()=>{const rec=recognition;rec.captureStats={packets:0,bytes:0,peak:0};const handle=rec.node.port.onmessage;rec.node.port.onmessage=event=>{if(event.data instanceof ArrayBuffer){rec.captureStats.packets++;rec.captureStats.bytes+=event.data.byteLength;for(const sample of new Float32Array(event.data))rec.captureStats.peak=Math.max(rec.captureStats.peak,Math.abs(sample))}handle(event)}});
       await page.waitForTimeout(12000);
       console.log('Capture diagnostics',await page.evaluate(()=>({context:recognition.context?.state,sampleRate:recognition.context?.sampleRate,ready:recognition.ready,sequence:recognition.sequence,stats:recognition.captureStats,track:recognition.stream.getAudioTracks()[0]?.getSettings(),recording:recorder.state,items:items.length})));
