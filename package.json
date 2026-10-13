@@ -1,6 +1,6 @@
 {
   "name": "lecture-companion-macos",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "课伴 macOS 本地端：Apple Silicon 与 Intel，Whisper + 本机 LLM",
   "main": "desktop/main.cjs",
   "author": "Lecture Companion contributors",
@@ -34,7 +34,11 @@
       "desktop/preload.cjs",
       "desktop/model-setup.cjs",
       "package.json",
-      "desktop/platform.cjs"
+      "desktop/platform.cjs",
+      "desktop/system-capture.cjs",
+      "desktop/subtitle-window.cjs",
+      "desktop/subtitle-preload.cjs",
+      "desktop/subtitle.html"
     ],
     "extraResources": [
       {
@@ -80,7 +84,8 @@
       "artifactName": "LectureCompanion-macOS-${version}-${arch}.${ext}",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "课伴使用麦克风录制课堂，并在本机生成字幕和译文。",
-        "NSAppleEventsUsageDescription": "课伴只处理本机课堂资料。"
+        "NSAppleEventsUsageDescription": "课伴只处理本机课堂资料。",
+        "NSAudioCaptureUsageDescription": "课伴采集本机播放的视频或直播声音，在本机生成双语字幕；不保存屏幕画面。"
       }
     }
   }

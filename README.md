@@ -4,6 +4,8 @@
 
 [下载 macOS 版本](https://github.com/wuxuanren2008-ux/keban-local-macos/releases/latest) · [兼容性与测试证据](docs/macos-compatibility.md)
 
+0.3.0 新增视频与直播的本机系统声音翻译、置顶双语字幕浮窗，支持英译中 / 中译英。使用方法与权限说明见[系统声音字幕](docs/system-subtitles.md)；系统声音需要 macOS 14.2+。
+
 ## 安装与使用
 
 1. Apple M1/M2/M3/M4 等机型选择文件名含 `arm64` 的 DMG。Intel 机型选择 `x64`。

@@ -13,7 +13,7 @@ class LocalRecognition {
     this.source=context.createMediaStreamSource(this.stream);this.node=new AudioWorkletNode(context,'lecture-pcm');const silence=context.createGain();silence.gain.value=0;this.source.connect(this.node);this.node.connect(silence);silence.connect(context.destination);
     const url=new URL('/v1/stream',location.origin);url.protocol='ws:';url.searchParams.set('token',window.localToken);
     const socket=this.socket=new WebSocket(url);
-    socket.onopen=()=>socket.send(JSON.stringify({type:'start',sample_rate:16000,language:this.lang?.startsWith('ms')?'ms':'en',course_id:window.localCourseId}));
+    socket.onopen=()=>socket.send(JSON.stringify({type:'start',sample_rate:16000,language:this.lang?.startsWith('ms')?'ms':this.lang?.startsWith('zh')?'zh':'en',course_id:window.localCourseId}));
     this.node.port.onmessage=event=>{
       if(generation!==this.generation)return;
       if(event.data?.type==='flushed'){if(socket.readyState===WebSocket.OPEN){for(const packet of this.pending)socket.send(packet);this.pending=[];socket.send(JSON.stringify({type:'stop'}))}this.cleanupAudio();return}

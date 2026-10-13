@@ -1,12 +1,15 @@
 'use strict';
-const {app, BrowserWindow, dialog, shell, session, ipcMain,Menu,systemPreferences} = require('electron');
+const {app, BrowserWindow, dialog, shell, session, ipcMain,Menu,systemPreferences,desktopCapturer,screen} = require('electron');
 const {platformPaths,sameOrigin}=require('./platform.cjs');
+const {installSystemCapture}=require('./system-capture.cjs');
+const {createSubtitleWindow}=require('./subtitle-window.cjs');
 const setup=require('./model-setup.cjs');
 const {spawn} = require('node:child_process');
 const {randomBytes} = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
 const os=require('node:os');
+const {pathToFileURL}=require('node:url');
 if(process.env.LECTURE_TEST_DATA)app.setPath('userData',process.env.LECTURE_TEST_DATA);
 let runtime, window, stopping=false, allowClose=false, closing=false;
 const origin='http://127.0.0.1:8766';
@@ -23,10 +26,10 @@ async function start(){
   if(process.platform==='darwin'&&Number(process.getSystemVersion().split('.')[0])<14)throw Error('课伴 macOS 版需要 macOS Sonoma 14 或更新版本。');
   const paths=platformPaths({root,resourcesPath:process.resourcesPath,isPackaged:app.isPackaged,dataDir:data});
   await setup.startInstalled(data,app.isPackaged?null:root);
-  const trusted=event=>{if(event.senderFrame?.url.split('#')[0].startsWith(origin+'/')!==true)throw Error('Only the local classroom may prepare models')};
+  const trusted=event=>{if(!window||event.sender!==window.webContents||!sameOrigin(event.senderFrame?.url,origin))throw Error('Only the local classroom may use desktop controls')};
   ipcMain.handle('lecture:install-ollama',async event=>{trusted(event);return setup.install(data)});
   ipcMain.handle('lecture:setup-progress',event=>{trusted(event);return setup.progress()});
-  ipcMain.handle('lecture:platform',event=>{trusted(event);return{platform:process.platform,arch:process.arch,supportedAsrDevices:paths.supportedAsrDevices}});
+  ipcMain.handle('lecture:platform',event=>{trusted(event);return{platform:process.platform,arch:process.arch,version:process.platform==='darwin'?process.getSystemVersion():os.release(),supportedAsrDevices:paths.supportedAsrDevices}});
   ipcMain.handle('lecture:microphone',async event=>{trusted(event);if(process.platform!=='darwin'||app.commandLine.hasSwitch('use-fake-device-for-media-stream'))return true;const current=systemPreferences.getMediaAccessStatus('microphone');return current==='granted'||(current==='not-determined'&&await systemPreferences.askForMediaAccess('microphone'))});
   const executable=paths.executable;
   const web=paths.web;
@@ -45,17 +48,27 @@ async function start(){
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   if(!ready)throw Error('本机服务未能启动。端口 8766 可能已占用，请关闭旧窗口后重试。');
+  const capture=installSystemCapture({session:session.defaultSession,desktopCapturer,owner:()=>window,origin,platform:process.platform,version:process.platform==='darwin'?process.getSystemVersion():os.release()});
+  ipcMain.handle('lecture:system-capture',event=>capture.arm(event));
+  ipcMain.handle('lecture:system-capture-clear',event=>{trusted(event);capture.clear()});
   session.defaultSession.setPermissionRequestHandler((contents,permission,callback,details)=>{
-    const same=contents.getURL().startsWith(origin+'/');
-    callback(same&&permission==='media'&&(!details.mediaTypes||details.mediaTypes.every(x=>x==='audio')));
+    const same=capture.trusted(contents,details.requestingUrl||contents.getURL());
+    callback(same&&((permission==='display-capture'&&capture.armed())||(permission==='media'&&(!details.mediaTypes||details.mediaTypes.every(x=>x==='audio')))));
   });
-  session.defaultSession.setPermissionCheckHandler((contents,permission,requestingOrigin,details)=>permission==='media'&&details.mediaType!=='video'&&sameOrigin(details.securityOrigin||requestingOrigin,origin));
+  session.defaultSession.setPermissionCheckHandler((contents,permission,requestingOrigin,details)=>capture.trusted(contents,details.securityOrigin||requestingOrigin)&&((permission==='display-capture'&&capture.armed())||(permission==='media'&&details.mediaType!=='video')));
   // No classroom content may leave the local runtime through the renderer.
   session.defaultSession.webRequest.onBeforeRequest((details,callback)=>{
     const protocol=new URL(details.url).protocol;
-    callback({cancel: !details.url.startsWith(origin+'/') && !details.url.startsWith('ws://127.0.0.1:8766/') && !['data:','blob:','devtools:'].includes(protocol)});
+    const subtitleFile=details.url===pathToFileURL(path.join(__dirname,'subtitle.html')).href;
+    callback({cancel: !subtitleFile && !details.url.startsWith(origin+'/') && !details.url.startsWith('ws://127.0.0.1:8766/') && !['data:','blob:','devtools:'].includes(protocol)});
   });
   window=new BrowserWindow({width:1440,height:960,minWidth:850,minHeight:650,backgroundColor:'#f5f7f4',title:'课伴',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false}});
+  const subtitles=createSubtitleWindow({BrowserWindow,screen,ipcMain,owner:window,origin});
+  ipcMain.handle('lecture:subtitles-show',event=>{trusted(event);subtitles.show()});
+  ipcMain.handle('lecture:subtitles-hide',event=>{trusted(event);subtitles.hide()});
+  ipcMain.on('lecture:subtitles-update',(event,payload)=>{try{trusted(event);subtitles.update(payload)}catch{}});
+  window.webContents.on('render-process-gone',()=>{capture.clear();subtitles.destroy()});
+  window.once('closed',()=>{capture.clear();subtitles.destroy()});
   if(process.platform==='darwin')Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'课伴',submenu:[{role:'about'},{type:'separator'},{role:'quit'}]},{label:'编辑',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},{label:'窗口',submenu:[{role:'minimize'},{role:'zoom'}]}]));
   window.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith('https://github.com/')||url.startsWith('https://ollama.com/'))shell.openExternal(url);return{action:'deny'}});
   window.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith(origin+'/'))event.preventDefault()});

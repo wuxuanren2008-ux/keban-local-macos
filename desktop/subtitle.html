@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>双语字幕</title>
+<style>
+  :root{
+    --bg:rgba(16,20,22,.88);
+    --line:#f2f6f4;
+    --translation:#ffd66b;
+    --dim:#9fb0aa;
+    --accent:#2f7d63;
+    --font:26px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:transparent}
+  body{
+    /* The drag region must not swallow the buttons, so it is applied to the
+       dedicated grip areas only. */
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--line);
+    -webkit-user-select:none;user-select:none;
+  }
+  #shell{
+    height:100%;display:flex;flex-direction:column;gap:6px;
+    padding:10px 14px;border-radius:14px;
+    background:var(--bg);
+    border:1px solid rgba(255,255,255,.12);
+  }
+  #bar{display:flex;align-items:center;gap:8px;-webkit-app-region:drag}
+  #status{flex:1;font-size:12px;color:var(--dim);letter-spacing:.02em;
+    -webkit-app-region:drag;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #bar button{
+    -webkit-app-region:no-drag;
+    font:inherit;font-size:12px;line-height:1;
+    padding:6px 10px;border-radius:8px;cursor:pointer;
+    color:var(--line);background:rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.18);
+  }
+  #bar button:hover{background:rgba(255,255,255,.18)}
+  #bar button:focus-visible{outline:2px solid var(--translation);outline-offset:1px}
+  #back{background:rgba(47,125,99,.85);border-color:rgba(255,255,255,.22)}
+
+  #lines{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;
+    -webkit-app-region:drag;min-height:0}
+  #original,#translation{
+    margin:0;font-weight:600;line-height:1.34;
+    word-break:break-word;overflow-wrap:anywhere;
+    /* Two visual lines max so a long segment cannot grow the overlay. */
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  }
+  #original{font-size:var(--font);color:var(--line)}
+  #translation{font-size:calc(var(--font) * .94);color:var(--translation)}
+  .empty{color:var(--dim);font-weight:500}
+  #note{margin:0;font-size:11px;color:var(--dim);-webkit-app-region:no-drag}
+</style>
+</head>
+<body>
+  <div id="shell">
+    <div id="bar">
+      <span id="status">等待字幕…</span>
+      <button id="smaller" type="button" title="减小字号">A−</button>
+      <button id="larger" type="button" title="增大字号">A+</button>
+      <button id="hide" type="button" title="隐藏浮窗（不停止课堂）">隐藏浮窗</button>
+      <button id="back" type="button" title="返回课伴主窗口">返回课伴</button>
+    </div>
+    <div id="lines">
+      <p id="original" class="empty">等待课堂原文…</p>
+      <p id="translation" class="empty">等待译文…</p>
+    </div>
+    <p id="note">拖拽顶部移动 · 拖动边缘缩放</p>
+  </div>
+<script>
+(function(){
+  'use strict';
+  // Hard cap mirrors the main-process guard so a malformed payload still cannot
+  // overflow the overlay.
+  var MAX_CHARS = 1200;
+  var MIN_FONT = 14;
+  var MAX_FONT = 64;
+  var STEP = 2;
+  var font = 26;
+
+  var api = window.subtitleOverlay || null;
+
+  // textContent only — never innerHTML — so transcript text can never become markup.
+  function setLine(node, text, placeholder){
+    var value = typeof text === 'string' ? text.replace(/\s+/g,' ').trim() : '';
+    var truncated = value.length > MAX_CHARS;
+    if(truncated) value = value.slice(0, MAX_CHARS);
+    if(!value){
+      node.textContent = placeholder;
+      node.classList.add('empty');
+      return;
+    }
+    node.textContent = truncated ? value + '…' : value;
+    node.classList.remove('empty');
+  }
+
+  var originalEl = document.getElementById('original');
+  var translationEl = document.getElementById('translation');
+  var statusEl = document.getElementById('status');
+
+  var STATUS_TEXT = {
+    idle:'等待字幕…',
+    listening:'正在聆听课堂…',
+    recognising:'正在识别语音…',
+    translating:'正在翻译…',
+    error:'字幕暂时不可用'
+  };
+
+  function render(payload){
+    var data = payload && typeof payload === 'object' ? payload : {};
+    setLine(originalEl, data.original, '等待课堂原文…');
+    setLine(translationEl, data.translation, '等待译文…');
+    var status = typeof data.status === 'string' ? data.status : 'idle';
+    var label = STATUS_TEXT[status] || status.slice(0, 80);
+    var language = typeof data.language === 'string' ? data.language.trim() : '';
+    if(language) label = label + ' · ' + language;
+    statusEl.textContent = label;
+  }
+
+  function applyFont(){
+    document.documentElement.style.setProperty('--font', font + 'px');
+  }
+
+  document.getElementById('smaller').addEventListener('click', function(){
+    font = Math.max(MIN_FONT, font - STEP); applyFont();
+  });
+  document.getElementById('larger').addEventListener('click', function(){
+    font = Math.min(MAX_FONT, font + STEP); applyFont();
+  });
+  document.getElementById('hide').addEventListener('click', function(){
+    if(api && typeof api.hide === 'function') api.hide();
+  });
+  document.getElementById('back').addEventListener('click', function(){
+    if(api && typeof api.focusOwner === 'function') api.focusOwner();
+  });
+
+  // Block any interaction that could navigate the overlay elsewhere.
+  window.addEventListener('dragover', function(e){ e.preventDefault(); });
+  window.addEventListener('drop', function(e){ e.preventDefault(); });
+
+  if(api && typeof api.onUpdate === 'function') api.onUpdate(render);
+  applyFont();
+})();
+</script>
+</body>
+</html>

@@ -114,8 +114,8 @@ class StreamingSession:
 
         # Validate language
         lang = msg.get("language", "en")
-        if lang not in ("en", "ms"):
-            return {"type": "error", "error": f"language must be 'en' or 'ms', got '{lang}'"}
+        if lang not in ("en", "ms", "zh"):
+            return {"type": "error", "error": f"language must be 'en', 'ms' or 'zh', got '{lang}'"}
         self.language = lang
         self.course_id = msg.get("course_id")
         self.running = True

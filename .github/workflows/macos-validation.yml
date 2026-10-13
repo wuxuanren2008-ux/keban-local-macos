@@ -54,7 +54,7 @@ jobs:
           .venv/bin/python -m pip freeze > test-results/native-dependencies.txt
       - name: Runtime and platform tests
         run: |
-          .venv/bin/python -m pytest tests/test_local_runtime.py tests/test_macos_runtime.py -q | tee test-results/runtime-tests.txt
+          .venv/bin/python -m pytest tests/test_local_runtime.py tests/test_macos_runtime.py tests/test_subtitle_languages.py -q | tee test-results/runtime-tests.txt
           npm test | tee test-results/frontend-tests.txt
       - name: Build native application and DMG
         run: bash scripts/build-macos.sh --skip-install
@@ -65,6 +65,7 @@ jobs:
           file "$APP/Contents/MacOS/课伴macOS" "$APP/Contents/Resources/runtime/lecture-runtime" | tee test-results/binary-architecture.txt
           codesign --verify --deep --strict --verbose=2 "$APP" > test-results/codesign.txt 2>&1
           /usr/libexec/PlistBuddy -c 'Print NSMicrophoneUsageDescription' "$APP/Contents/Info.plist" >> test-results/codesign.txt
+          /usr/libexec/PlistBuddy -c 'Print NSAudioCaptureUsageDescription' "$APP/Contents/Info.plist" >> test-results/codesign.txt
       - name: Prepare local Ollama and models
         run: |
           node scripts/prepare-native-ollama.cjs
@@ -81,6 +82,15 @@ jobs:
           export LECTURE_TEST_MODEL='${{ matrix.model }}'
           node scripts/desktop-smoke.cjs 2>&1 | tee test-results/packaged-smoke.txt
           grep '^PASS:' test-results/packaged-smoke.txt
+      - name: Verify native subtitle window and offline system-stream pipeline
+        run: |
+          APP="$(find release -maxdepth 2 -name '*.app' -type d | head -1)"
+          export LECTURE_APP_EXE="$PWD/$APP/Contents/MacOS/课伴macOS"
+          export LECTURE_SYSTEM_FIXTURE=1
+          export LECTURE_TEST_MODEL='${{ matrix.model }}'
+          node scripts/subtitle-smoke.cjs 2>&1 | tee test-results/subtitle-fixture-smoke.txt
+          grep '^PASS system subtitles:' test-results/subtitle-fixture-smoke.txt
+          grep '^PASS system error paths:' test-results/subtitle-fixture-smoke.txt
       - name: Release checksums
         run: |
           (cd release && shasum -a 256 *.dmg *.zip > SHA256SUMS-${{ matrix.arch }}.txt)
