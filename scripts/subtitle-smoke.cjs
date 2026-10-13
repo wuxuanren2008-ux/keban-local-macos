@@ -16,7 +16,10 @@ const {spawn}=require('node:child_process');
       await page.evaluate(async encoded=>{
         const context=new AudioContext();if(context.setSinkId)await context.setSinkId({type:'none'});
         const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));const buffer=await context.decodeAudioData(bytes.buffer);
-        const source=context.createBufferSource(),destination=context.createMediaStreamDestination();source.buffer=buffer;source.loop=true;source.connect(destination);await context.resume();source.start();
+        // Put all speech in the RIGHT channel. This proves the production
+        // graph actually downmixes stereo system audio instead of losing it.
+        const stereo=context.createBuffer(2,buffer.length,buffer.sampleRate);stereo.copyToChannel(buffer.getChannelData(0),1);
+        const source=context.createBufferSource(),destination=context.createMediaStreamDestination();source.buffer=stereo;source.loop=true;source.connect(destination);await context.resume();source.start();
         window.__subtitleFixture=context;window.__subtitleFixtureStream=destination.stream;
         navigator.mediaDevices.getDisplayMedia=async()=>destination.stream;
       },wav);

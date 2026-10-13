@@ -6,7 +6,7 @@ function recognitionHarness(){
   let socket,node;const sent=[];
   class Socket{static OPEN=1;constructor(){socket=this;this.readyState=1;this.bufferedAmount=0}send(value){sent.push(value)}close(){this.readyState=3;this.onclose?.()}}
   class Context{constructor(){this.audioWorklet={addModule:async()=>{}};this.destination={}}createMediaStreamSource(){return{connect(){},disconnect(){}}}createGain(){return{gain:{value:0},connect(){}}}async resume(){}async close(){}}
-  class Node{constructor(){node=this;this.port={postMessage:value=>{this.flush=value}}}connect(){}disconnect(){}}
+  class Node{constructor(context,name,options){node=this;this.options=options;this.port={postMessage:value=>{this.flush=value}}}connect(){}disconnect(){}}
   const context=vm.createContext({AudioContext:Context,AudioWorkletNode:Node,WebSocket:Socket,URL,location:{origin:'http://127.0.0.1:8766'},window:{localToken:'test-token',localCourseId:'course-a'},Date,startedAt:Date.now(),active:false,paused:false,reliabilityNotice(){}});
   vm.runInContext(fs.readFileSync('desktop/frontend/local-recognition.js','utf8')+'\nglobalThis.Recognition=LocalRecognition',context);
   const recognition=new context.Recognition({});
@@ -18,6 +18,12 @@ test('stop sends remaining captured PCM before the stop barrier',async()=>{
   const packet=new ArrayBuffer(64);node.port.onmessage({data:packet});
   h.recognition.stop();assert.equal(node.flush,'flush');node.port.onmessage({data:{type:'flushed'}});
   assert.equal(h.sent[1],packet);assert.deepEqual(JSON.parse(h.sent[2]),{type:'stop'});socket.close();await h.recognition.drained;
+});
+
+test('stereo system audio is explicitly downmixed and Chinese ASR is preserved',async()=>{
+  const h=recognitionHarness();h.recognition.lang='zh-CN';const {node,socket}=await h.ready();
+  assert.equal(node.options.channelCount,1);assert.equal(node.options.channelCountMode,'explicit');assert.equal(node.options.channelInterpretation,'speakers');
+  assert.equal(JSON.parse(h.sent[0]).language,'zh');socket.close();
 });
 test('a final stable caption after stop is emitted once even when packets repeat',async()=>{
   const h=recognitionHarness();const {socket}=await h.ready();const outputs=[];h.recognition.onresult=e=>outputs.push(e);
