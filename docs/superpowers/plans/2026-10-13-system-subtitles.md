@@ -17,8 +17,8 @@
 
 ## 任务
 
-- [ ] WorkBuddy：创建 desktop/subtitle-window.cjs、subtitle-preload.cjs、subtitle.html 及独立 tests/subtitle-window.test.cjs。接口 createSubtitleWindow({BrowserWindow,screen,ipcMain,owner,origin}) → {show(),update({original,translation,status,language}),hide(),destroy()}；主窗校验由 Codex 负责。
-- [ ] Codex：新增系统捕获策略与测试，改 main/preload 权限和 IPC；补 macOS Info.plist 音频用途声明。
-- [ ] Codex：新增 frontend/system-subtitles.js，修改 local.js start(preparedStream) 传递、退出清理与界面资产构建。
-- [ ] 验证：协议、权限、关闭释放、浮窗同步；运行后端与前端回归，Windows 受控声音实际 loopback，macOS 两架构原生构建与测试。
-- [ ] 两仓库同步公共实现、更新使用说明与版本；验收通过后发布两版安装包和准确的测试范围。
+- [x] WorkBuddy：创建 desktop/subtitle-window.cjs、subtitle-preload.cjs、subtitle.html 及独立 tests/subtitle-window.test.cjs。接口 createSubtitleWindow({BrowserWindow,screen,ipcMain,owner,origin}) → {show(),update({original,translation,status,language}),hide(),destroy()}；主窗校验由 Codex 负责。
+- [x] Codex：新增系统捕获策略与测试，改 main/preload 权限和 IPC；补 macOS Info.plist 音频用途声明。
+- [x] Codex：新增 frontend/system-subtitles.js，修改 local.js start(preparedStream) 传递、退出清理与界面资产构建。
+- [x] 验证：协议、权限、关闭释放、浮窗同步；运行后端与前端回归，Windows 受控声音实际 loopback，macOS 两架构原生构建与测试。
+- [x] 两仓库同步公共实现、更新使用说明与版本；验收通过后发布两版安装包和准确的测试范围。
